@@ -117,6 +117,12 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
 .empty svg.i{width:34px;height:34px;stroke-width:1.4}
 .warnbox{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--warn-soft);color:var(--warn);font-size:13px}
 .ef{color:var(--accent)} .tj{color:var(--card)} .tr{color:var(--transfer)}
+.opcion{display:flex;flex-direction:column;gap:4px;text-align:left;padding:14px;border-radius:var(--r);border:1px solid var(--line-2);background:var(--surface-2)}
+.opcion b{font-size:16px;font-weight:700}
+.opcion span{font-size:13px;color:var(--fg-2);line-height:1.35}
+.opcion.rec{border-color:var(--accent);background:var(--accent-soft)}
+.opcion.rec b{color:var(--accent)}
+.opcion.rec::before{content:'RECOMENDADO';font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--accent)}
 
 /* ---------- ventas ---------- */
 .searchbar{display:flex;gap:8px;align-items:stretch}
@@ -416,11 +422,11 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
         <h2>Cargá tu lista de artículos</h2>
         <p>Tu lista de precios y stock no viene adentro de la página, así nadie más la ve. Se guarda solo en este equipo.</p>
         <ol>
-          <li>En la PC, exportá el stock desde VP Sistemas en Excel.</li>
-          <li>Pasá ese archivo a este equipo (por ejemplo, mandátelo por WhatsApp).</li>
-          <li>Tocá el botón y elegí el archivo.</li>
+          <li>En la PC, cerrá StockFacil.</li>
+          <li>Tocá el botón y elegí el archivo <b>DBINDU.GDB</b> (está en C:\StockFacil Indumentaria).</li>
+          <li>Listo: trae todos los artículos con precio, stock y temporada. También sirve el Excel de siempre.</li>
         </ol>
-        <button class="btn primary big" type="button" id="setup-pick"><svg class="i"><use href="#i-box"/></svg>Cargar Excel de stock</button>
+        <button class="btn primary big" type="button" id="setup-pick"><svg class="i"><use href="#i-box"/></svg>Cargar lista de StockFacil</button>
         <p style="font-size:13px">Cuando cambien precios o stock, lo cargás de nuevo desde «Actualizar stock». Las fotos y las ventas no se borran.</p>
       </div>
     </section>
@@ -681,6 +687,7 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
     <div class="sheet-body">
       <div class="chips"><button class="chip" type="button" id="fl-stock" aria-pressed="true">Solo con stock</button></div>
       <div class="fl-sec"><span class="label">Para</span><div class="chips" id="fl-para"></div></div>
+      <div class="fl-sec" id="fl-temp-sec"><span class="label">Temporada</span><div class="chips" id="fl-temp"></div></div>
       <div class="fl-sec"><span class="label">Prenda</span><div class="chips" id="fl-tipo"></div></div>
       <div class="fl-sec"><span class="label">Talle</span><div class="chips" id="fl-talle"></div></div>
       <div class="fl-sec"><span class="label">Color</span><div class="chips" id="fl-color"></div></div>
@@ -734,9 +741,23 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
     <header class="sheet-head"><div><h2 id="ms-title">Actualizar stock y precios</h2></div><button class="icon-btn" type="button" data-close aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></header>
     <div class="sheet-body">
       <div class="rows" id="ms-info"></div>
-      <p class="more" style="text-align:left">Exportá el stock desde VP Sistemas en Excel (o CSV) con las mismas columnas de siempre: CODIGO, DETALLE, TALLE, COLOR, P.VENTA, P.TARJETA, STOCK… Reemplaza la lista completa.</p>
-      <button class="btn primary" type="button" id="ms-pick"><svg class="i"><use href="#i-box"/></svg>Elegir archivo Excel o CSV</button>
+      <p class="more" style="text-align:left"><b>Lo más fácil:</b> en la PC cerrá StockFacil y elegí el archivo <b>DBINDU.GDB</b> (en C:\StockFacil Indumentaria). Trae todos los artículos de una, con precio, stock y temporada. El archivo no se sube a ningún lado: la app solo lee los artículos.</p>
+      <p class="more" style="text-align:left">También sigue funcionando el Excel o CSV de siempre.</p>
+      <button class="btn primary" type="button" id="ms-pick"><svg class="i"><use href="#i-box"/></svg>Elegir DBINDU.GDB o Excel</button>
       <button class="btn ghost" type="button" id="ms-reset" hidden>Volver al Excel original</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== VENTANA: CÓMO CARGAR EL EXCEL ===================== -->
+<div class="overlay" id="m-carga" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mk-title" style="max-width:460px">
+    <header class="sheet-head"><div><h2 id="mk-title">¿Cómo cargo este archivo?</h2></div><button class="icon-btn" type="button" data-close aria-label="Cancelar"><svg class="i"><use href="#i-x"/></svg></button></header>
+    <div class="sheet-body">
+      <div class="rows" id="mk-info"></div>
+      <div class="warnbox" id="mk-warn" hidden><svg class="i"><use href="#i-warn"/></svg><span id="mk-warn-txt"></span></div>
+      <button class="opcion" type="button" id="mk-parcial"><b>Actualizar solo estos artículos</b><span>Cambia precio y stock de lo que trae el archivo y agrega lo nuevo. El resto de la lista queda igual.</span></button>
+      <button class="opcion" type="button" id="mk-total"><b>Reemplazar la lista completa</b><span>Para cuando bajás todos los artículos. Lo que no esté en el archivo sale de la app (sirve para limpiar lo que borraste en el programa).</span></button>
     </div>
   </div>
 </div>
@@ -783,7 +804,14 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
 <div class="overlay" id="m-cuenta" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cu-title" style="max-width:440px">
     <header class="sheet-head"><div><h2 id="cu-title">Cuenta y sincronización</h2></div><button class="icon-btn" type="button" data-close aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></header>
-    <div class="sheet-body"><div class="rows" id="cu-info"></div><p class="more" id="cu-txt" style="text-align:left;margin:0"></p></div>
+    <div class="sheet-body"><div class="rows" id="cu-info"></div><p class="more" id="cu-txt" style="text-align:left;margin:0"></p>
+      <div class="panel" id="cu-tienda" hidden>
+        <h3>Tienda para clientes</h3>
+        <p class="more" style="text-align:left">Los clientes ven las fotos, los dos precios y los talles que hay. No ven cantidades, ventas ni clientes. Se actualiza sola con la lista y las fotos.</p>
+        <div style="display:flex;gap:8px"><button class="btn sm" type="button" id="cu-t-ver" style="flex:1">Ver tienda</button><button class="btn sm primary" type="button" id="cu-t-comp" style="flex:1"><svg class="i"><use href="#i-share"/></svg>Compartir link</button></div>
+        <button class="link-btn" type="button" id="cu-t-pub" style="align-self:flex-start">Volver a publicar la tienda</button>
+      </div>
+    </div>
     <footer class="sheet-foot"><button class="btn" type="button" id="cu-salir">Cerrar sesión</button><button class="btn primary" type="button" id="cu-accion">Sincronizar ahora</button></footer>
   </div>
 </div>
@@ -792,7 +820,7 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
 <div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toast-txt"></span><button type="button" id="toast-btn" hidden></button></div>
 
 <input type="file" id="foto-input" accept="image/*" capture="environment" class="vh" tabindex="-1" aria-hidden="true">
-<input type="file" id="stock-input" accept=".xlsx,.xls,.csv,.txt" class="vh" tabindex="-1" aria-hidden="true">
+<input type="file" id="stock-input" accept=".gdb,.GDB,.fdb,.xlsx,.xls,.csv,.txt" class="vh" tabindex="-1" aria-hidden="true">
 <input type="file" id="foto-prod-input" accept="image/*" class="vh" tabindex="-1" aria-hidden="true">
 <input type="file" id="fotos-import-input" accept=".zip,application/zip,image/*" multiple class="vh" tabindex="-1" aria-hidden="true">
 <input type="file" id="backup-input" accept=".json,application/json" class="vh" tabindex="-1" aria-hidden="true">
@@ -882,7 +910,7 @@ const BASE = JSON.parse(document.getElementById('catalogo-base').textContent);
 let CAT_META = LS.get('catalogo_meta', null);
 let CAT_ROWS = (CAT_META && LS.get('catalogo', null)) || BASE.rows;
 if (CAT_ROWS === BASE.rows) CAT_META = null;
-let GROUPS = [], BYCODE = new Map(), VARS = new Map(), TALLES = new Set(), COLWORDS = new Set(), OPC = {para:[], tipo:[], talle:[], color:[], marca:[]};
+let GROUPS = [], BYCODE = new Map(), VARS = new Map(), TALLES = new Set(), COLWORDS = new Set(), OPC = {para:[], temp:[], tipo:[], talle:[], color:[], marca:[]};
 
 function talleOrden(t) {
   const u = String(t).toUpperCase();
@@ -945,15 +973,20 @@ const SINON = {remera:'camiseta', remeras:'camiseta', remerita:'camiseta', remer
 const TIPO_FIX = {camisetas:'camiseta', camiset:'camiseta', bernuda:'bermuda', bermudas:'bermuda', buzos:'buzo', calzas:'calza', bikinis:'bikini', blusas:'blusa', camisas:'camisa'};
 const cap = t => { t = String(t || '').toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
 const tipoLabel = k => k === 'otras' ? 'Otras' : cap(k);
-const FIL_VACIO = {para:[], tipo:[], talle:[], color:[], marca:[], stock:false};
-const FIL = {para:[], tipo:[], talle:[], color:[], marca:[], stock:LS.get('fil_stock', true) !== false};
-const filtrosN = F => F.para.length + F.tipo.length + F.talle.length + F.color.length + F.marca.length;
+const FACS = ['para', 'temp', 'tipo', 'talle', 'color', 'marca'];
+const FIL_VACIO = {para:[], temp:[], tipo:[], talle:[], color:[], marca:[], stock:false};
+const FIL = {para:[], temp:[], tipo:[], talle:[], color:[], marca:[], stock:LS.get('fil_stock', true) !== false};
+const filtrosN = F => FACS.reduce((n, k) => n + F[k].length, 0);
+const TEMP_LABEL = {'primavera verano':'Primavera/Verano', 'otono invierno':'Otoño/Invierno', 'colegial':'Colegial'};
+const TEMP_ORDEN = ['primavera verano', 'otono invierno', 'colegial'];
+const tempLabel = k => TEMP_LABEL[k] || cap(k);
 
 function prepararFiltros() {
   TALLES = new Set(); COLWORDS = new Set();
-  const cTipo = new Map(), cCol = new Map(), cMar = new Map(), paras = new Set(), talles = new Set();
+  const cTipo = new Map(), cCol = new Map(), cMar = new Map(), paras = new Set(), talles = new Set(), temps = new Set();
   for (const g of GROUPS) {
     g.para = PARA_DE[g.co.slice(0, 2)] || 'otros';
+    g.temp = norm(g.te).replace(/[^a-z0-9]+/g, ' ').trim();
     const w = (g.nd.split(/\s+/)[0] || '');
     g.tipo = TIPO_FIX[w] || w;
     for (const v of g.variants) {
@@ -968,6 +1001,7 @@ function prepararFiltros() {
     if ((cTipo.get(g.tipo) || 0) < 2) g.tipo = 'otras';
     if (g.oculto) continue;
     paras.add(g.para);
+    if (g.temp) temps.add(g.temp);
     if (g.mr) cMar.set(g.mr, (cMar.get(g.mr) || 0) + 1);
     for (const v of g.variants) { if (v.tan) talles.add(v.tan); if (v.cl) cCol.set(v.cl, (cCol.get(v.cl) || 0) + 1); }
   }
@@ -976,12 +1010,13 @@ function prepararFiltros() {
   const porCuenta = m => [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))).map(x => x[0]);
   OPC = {
     para: Object.keys(PARA).filter(k => paras.has(k)),
+    temp: [...temps].sort((a, b) => (TEMP_ORDEN.indexOf(a) + 1 || 99) - (TEMP_ORDEN.indexOf(b) + 1 || 99) || a.localeCompare(b)),
     tipo: porCuenta(tipos).sort((a, b) => (a === 'otras') - (b === 'otras')),
     talle: [...talles].sort((a, b) => talleOrden(a.toUpperCase()) - talleOrden(b.toUpperCase())),
     color: porCuenta(cCol),
     marca: porCuenta(cMar)
   };
-  for (const k of ['para', 'tipo', 'talle', 'color', 'marca']) FIL[k] = FIL[k].filter(x => OPC[k].includes(x));
+  for (const k of FACS) FIL[k] = FIL[k].filter(x => OPC[k].includes(x));
 }
 function parseQ(q) {
   const P = {txt:[], talles:[], colores:[], raw:norm(q)};
@@ -1012,6 +1047,7 @@ function variantesOk(g, P, F, excl) {
 function pasa(g, P, F, excl) {
   if (g.oculto) return false;
   if (excl !== 'para' && F.para.length && !F.para.includes(g.para)) return false;
+  if (excl !== 'temp' && F.temp.length && !F.temp.includes(g.temp)) return false;
   if (excl !== 'tipo' && F.tipo.length && !F.tipo.includes(g.tipo)) return false;
   if (excl !== 'marca' && F.marca.length && !F.marca.includes(g.mr)) return false;
   for (const t of P.txt) if (!tokOk(g.s, t)) return false;
@@ -1033,7 +1069,7 @@ function buscar(q, sinFiltros) {
 }
 function facetas(q) {
   const P = parseQ(q), res = {};
-  for (const fac of ['para', 'tipo', 'talle', 'color', 'marca']) {
+  for (const fac of FACS) {
     const m = new Map();
     for (const g of GROUPS) {
       if (!pasa(g, P, FIL, fac)) continue;
@@ -1052,6 +1088,7 @@ function chipsActivos() {
   const L = [];
   if (FIL.stock) L.push(['stock', '', 'Con stock']);
   for (const k of FIL.para) L.push(['para', k, PARA[k] || k]);
+  for (const k of FIL.temp) L.push(['temp', k, tempLabel(k)]);
   for (const k of FIL.tipo) L.push(['tipo', k, tipoLabel(k)]);
   for (const k of FIL.talle) L.push(['talle', k, 'Talle ' + k.toUpperCase()]);
   for (const k of FIL.color) L.push(['color', k, cap(k)]);
@@ -1082,6 +1119,8 @@ function renderFacetas() {
   };
   const visible = (fac, val) => FIL[fac].includes(val) || (fx[fac].get(val) || 0) > 0;
   $('#fl-para').innerHTML = OPC.para.map(k => chip('para', k, PARA[k] || k)).join('');
+  $('#fl-temp-sec').hidden = !OPC.temp.length;
+  $('#fl-temp').innerHTML = OPC.temp.map(k => chip('temp', k, tempLabel(k))).join('');
   $('#fl-tipo').innerHTML = OPC.tipo.filter(k => visible('tipo', k)).map(k => chip('tipo', k, tipoLabel(k))).join('') || '<span class="more">Nada con estos filtros</span>';
   $('#fl-talle').innerHTML = OPC.talle.map(k => chip('talle', k, k.toUpperCase())).join('');
   $('#fl-color').innerHTML = OPC.color.filter(k => visible('color', k)).map(k => chip('color', k, cap(k))).join('') || '<span class="more">Nada con estos filtros</span>';
@@ -1096,7 +1135,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-fopen],[data-fdel],[data-fclear]');
   if (!t) return;
   if (t.hasAttribute('data-fopen')) { $('#fl-mq').value = ''; renderFacetas(); abrirVentana('m-fil'); return; }
-  if (t.hasAttribute('data-fclear')) { for (const k of ['para', 'tipo', 'talle', 'color', 'marca']) FIL[k] = []; aplicarFiltros(); return; }
+  if (t.hasAttribute('data-fclear')) { for (const k of FACS) FIL[k] = []; aplicarFiltros(); return; }
   const f = t.dataset.fdel, v = t.dataset.val;
   if (f === 'stock') FIL.stock = false; else FIL[f] = FIL[f].filter(x => x !== v);
   aplicarFiltros();
@@ -1109,7 +1148,7 @@ $('#m-fil').addEventListener('click', e => {
 });
 $('#fl-stock').addEventListener('click', () => { FIL.stock = !FIL.stock; aplicarFiltros(); });
 $('#fl-mq').addEventListener('input', renderFacetas);
-$('#fl-clear').addEventListener('click', () => { for (const k of ['para', 'tipo', 'talle', 'color', 'marca']) FIL[k] = []; FIL.stock = true; aplicarFiltros(); });
+$('#fl-clear').addEventListener('click', () => { for (const k of FACS) FIL[k] = []; FIL.stock = true; aplicarFiltros(); });
 $('#fl-ok').addEventListener('click', () => cerrarVentana('m-fil'));
 
 function precioTxt(min, max) { return min === max ? fmt(min) : 'desde ' + fmt(min); }
@@ -1191,6 +1230,7 @@ function cerrarVentana(id) {
   const i = pila.indexOf(top);
   if (i >= 0) pila.splice(i, 1);
   if (top === 'm-confirm' && confirmarResolver) { const r = confirmarResolver; confirmarResolver = null; r(false); }
+  if (top === 'm-carga' && cargaResolver) { const r = cargaResolver; cargaResolver = null; r(null); }
 }
 function cerrarTodas() { while (pila.length) cerrarVentana(); }
 document.addEventListener('click', e => {
@@ -1202,7 +1242,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (!$('#cam').hidden) cerrarCamara(); else if (pila.length) cerrarVentana(); }
 });
 
-let confirmarResolver = null;
+let confirmarResolver = null, cargaResolver = null;
 function confirmar(titulo, texto, si) {
   $('#mc-title').textContent = titulo;
   $('#mc-txt').textContent = texto || '';
@@ -2172,6 +2212,39 @@ function filasDesdeTabla(tabla) {
   if (!out.length) throw new Error('El archivo no tiene artículos.');
   return out;
 }
+/* Carga parcial: reemplaza solo las filas (código + talle + color) que trae el archivo y agrega las nuevas */
+const claveFila = r => r[0] + '|' + norm(r[6]) + '|' + norm(r[7]);
+function fusionarFilas(base, nuevas) {
+  const claves = new Set(nuevas.map(claveFila));
+  const codsBase = new Set(base.map(r => r[0]));
+  const cods = new Set(nuevas.map(r => r[0]));
+  let act = 0, agr = 0;
+  for (const c of cods) codsBase.has(c) ? act++ : agr++;
+  return {rows:base.filter(r => !claves.has(claveFila(r))).concat(nuevas), act, agr};
+}
+function elegirCarga(rows, nombre) {
+  const cods = new Set(rows.map(r => r[0]));
+  const codsBase = new Set(CAT_ROWS.map(r => r[0]));
+  const nuevos = [...cods].filter(c => !codsBase.has(c)).length;
+  $('#mk-info').innerHTML =
+    '<div class="row"><span>Archivo</span><span>' + esc(nombre) + '</span></div>' +
+    '<div class="row"><span>Trae</span><span>' + cods.size + (cods.size === 1 ? ' artículo' : ' artículos') + ' · ' + rows.length + ' filas</span></div>' +
+    '<div class="row"><span>Nuevos (no estaban)</span><span class="num">' + nuevos + '</span></div>' +
+    '<div class="row"><span>Lista actual</span><span>' + codsBase.size + ' artículos · ' + CAT_ROWS.length + ' filas</span></div>';
+  const redondo = [100, 200, 250, 500, 1000, 2000, 5000].includes(rows.length);
+  $('#mk-warn').hidden = !redondo;
+  if (redondo) $('#mk-warn-txt').textContent = 'El archivo tiene justo ' + rows.length + ' filas: puede que el programa haya bajado solo una parte. Si filtraste y eran justo ' + rows.length + ', está bien.';
+  const parcialRec = rows.length < CAT_ROWS.length * 0.7;
+  $('#mk-parcial').classList.toggle('rec', parcialRec);
+  $('#mk-total').classList.toggle('rec', !parcialRec);
+  const cont = $('#mk-parcial').parentNode;
+  if (parcialRec) cont.insertBefore($('#mk-parcial'), $('#mk-total')); else cont.insertBefore($('#mk-total'), $('#mk-parcial'));
+  abrirVentana('m-carga');
+  return new Promise(res => { cargaResolver = res; });
+}
+for (const [id, modo] of [['mk-parcial', 'parcial'], ['mk-total', 'total']]) {
+  $('#' + id).addEventListener('click', () => { const r = cargaResolver; cargaResolver = null; cerrarVentana('m-carga'); if (r) r(modo); });
+}
 function aplicarCatalogo(rows, meta) {
   CAT_ROWS = rows; CAT_META = meta;
   if (meta) { LS.set('catalogo', rows); LS.set('catalogo_meta', meta); }
@@ -2181,9 +2254,239 @@ function aplicarCatalogo(rows, meta) {
   irA(S.tab === 'ventas' || S.tab === 'catalogo' ? S.tab : 'ventas');
   nubeGuardarCatalogo();
 }
+/* =========================================================
+   Lector de la base de StockFacil (DBINDU.GDB · Firebird 2.5 · ODS 11)
+   Solo LEE, en el propio navegador: el archivo no se sube a ningún lado.
+   ========================================================= */
+const LectorGDB = (() => {
+  const dec = new TextDecoder('windows-1252');
+  const SALTEAR = 1 | 2 | 4 | 16 | 32;   // borrado, versión vieja, fragmento, blob
+
+  function abrir(buf) {
+    const u8 = new Uint8Array(buf), dv = new DataView(buf);
+    if (u8.length < 1024 || u8[0] !== 1) throw new Error('Ese archivo no es la base de StockFacil (DBINDU.GDB).');
+    const ps = dv.getUint16(16, true), ods = dv.getUint16(18, true) & 0x7fff;
+    if (![1024, 2048, 4096, 8192, 16384].includes(ps) || u8.length % ps) throw new Error('Ese archivo no es la base de StockFacil (DBINDU.GDB).');
+    if (ods !== 11) throw new Error('La base de StockFacil es de una versión que todavía no sé leer (ODS ' + ods + ').');
+    const hdrPages = dv.getInt32(20, true), oit = dv.getInt32(28, true);
+    const maxRec = Math.floor((ps - 28) / 17), dpPorPp = Math.floor((ps - 32) * 8 / 34);
+    const i16 = o => dv.getInt16(o, true), u16 = o => dv.getUint16(o, true), i32 = o => dv.getInt32(o, true);
+    const npag = u8.length / ps;
+    const pagina = n => { if (!(n > 0 && n < npag)) throw new Error('La base parece dañada (página ' + n + ').'); return n * ps; };
+    let tmp = new Uint8Array(1 << 16);
+
+    function descomprimir(partes) {
+      let o = 0;
+      for (const [a, b] of partes) {
+        let i = a;
+        while (i < b) {
+          let c = u8[i++]; if (c > 127) c -= 256;
+          const n = c > 0 ? c : -c;
+          if (o + n > tmp.length) { const t = new Uint8Array(tmp.length * 2); t.set(tmp); tmp = t; }
+          if (c > 0) { tmp.set(u8.subarray(i, i + c), o); i += c; }
+          else if (c < 0) { tmp.fill(u8[i++], o, o + n); }
+          o += n;
+        }
+      }
+      return tmp.slice(0, o);
+    }
+    function slot(pg, line) {
+      const p = pagina(pg);
+      if (u8[p] !== 5 || line >= u16(p + 22)) return null;
+      const off = u16(p + 24 + 4 * line), len = u16(p + 26 + 4 * line);
+      return off && len ? [p + off, p + off + len] : null;
+    }
+    function leerRegistro(s) {
+      const [a, b] = s, flags = u16(a + 10);
+      const r = {tx: i32(a), flags, formato: u8[a + 12]};
+      if (!(flags & 8)) { r.datos = descomprimir([[a + 13, b]]); return r; }
+      const partes = [[a + 22, b]];
+      let fp = i32(a + 16), fl = u16(a + 20), vueltas = 0;
+      while (vueltas++ < 1000) {
+        const f = slot(fp, fl); if (!f) throw new Error('La base parece dañada (fragmento).');
+        if (u16(f[0] + 10) & 8) { partes.push([f[0] + 22, f[1]]); fp = i32(f[0] + 16); fl = u16(f[0] + 20); }
+        else { partes.push([f[0] + 13, f[1]]); break; }
+      }
+      r.datos = descomprimir(partes);
+      return r;
+    }
+
+    const punterosCache = new Map();
+    function punteros(rel) {
+      if (punterosCache.has(rel)) return punterosCache.get(rel);
+      let res = [];
+      if (rel === 0) {
+        for (let pp = hdrPages, n = 0; pp && n < 100000; n++) { res.push(pp); pp = i32(pagina(pp) + 20); }
+      } else {
+        const m = new Map();
+        for (const r of registros(0)) {
+          const d = new DataView(r.datos.buffer);
+          if (d.getInt16(8, true) === rel && d.getInt16(16, true) === 4) m.set(d.getInt32(12, true), d.getInt32(4, true));
+        }
+        res = [...m.keys()].sort((a, b) => a - b).map(k => m.get(k));
+      }
+      punterosCache.set(rel, res);
+      return res;
+    }
+    function* registros(rel) {
+      for (const pp of punteros(rel)) {
+        const p = pagina(pp);
+        if (u8[p] !== 4) continue;
+        const cnt = u16(p + 24);
+        for (let s = 0; s < cnt; s++) {
+          const dp = i32(p + 32 + 4 * s);
+          if (!dp) continue;
+          const d = pagina(dp);
+          if (u8[d] !== 5) continue;
+          const n = u16(d + 22);
+          for (let line = 0; line < n; line++) {
+            const sl = slot(dp, line);
+            if (!sl || sl[1] - sl[0] < 13 || (u16(sl[0] + 10) & SALTEAR)) continue;
+            yield leerRegistro(sl);
+          }
+        }
+      }
+    }
+    function blob(id) {   // id: Uint8Array(8) = relación (2) + número alto (1) + relleno (1) + número (4)
+      const d = new DataView(id.buffer, id.byteOffset, 8);
+      const rel = d.getUint16(0, true), num = d.getUint8(2) * 4294967296 + d.getUint32(4, true);
+      const line = num % maxRec, resto = Math.floor(num / maxRec), s = resto % dpPorPp, seq = Math.floor(resto / dpPorPp);
+      const pp = punteros(rel)[seq]; if (pp == null) throw new Error('La base parece dañada (blob).');
+      const sl = slot(i32(pagina(pp) + 32 + 4 * s), line); if (!sl) throw new Error('La base parece dañada (blob).');
+      const [a, b] = sl;
+      if (u8[a + 12] !== 0) throw new Error('Formato de tabla demasiado grande para leer.');
+      const largo = i32(a + 20);
+      if (u16(a + 10) & 32) return u8.slice(a + 28, a + 28 + largo);
+      const out = new Uint8Array(largo); let o = 0, i = a + 28;
+      while (i + 2 <= b && o < largo) { const n = u16(i); out.set(u8.subarray(i + 2, i + 2 + n), o); o += n; i += 2 + n; }
+      return out;
+    }
+    const texto = (b, a, n) => dec.decode(b.subarray(a, a + n)).trim();
+
+    // ---------- catálogo del sistema: relaciones, campos y formatos ----------
+    const relaciones = new Map();
+    for (const r of registros(6)) relaciones.set(texto(r.datos, 42, 31), new DataView(r.datos.buffer).getInt16(32, true));
+    function idDe(nombre) {
+      const id = relaciones.get(nombre);
+      if (id == null) throw new Error('En la base no está la tabla ' + nombre + '.');
+      return id;
+    }
+    let camposCache = null;
+    function campos(nombre) {
+      if (!camposCache) {
+        camposCache = new Map();
+        for (const r of registros(5)) {
+          const rel = texto(r.datos, 35, 31);
+          if (!camposCache.has(rel)) camposCache.set(rel, []);
+          camposCache.get(rel)[new DataView(r.datos.buffer).getInt16(306, true)] = texto(r.datos, 4, 31);
+        }
+      }
+      return camposCache.get(nombre) || [];
+    }
+    function formatos(rel) {
+      const m = new Map();
+      for (const r of registros(8)) {
+        const d = new DataView(r.datos.buffer);
+        if (d.getInt16(4, true) !== rel) continue;
+        const desc = blob(r.datos.subarray(8, 16)), dd = new DataView(desc.buffer, desc.byteOffset, desc.byteLength), lista = [];
+        for (let i = 0; i + 12 <= desc.length; i += 12)
+          lista.push({dt:dd.getUint8(i), sc:dd.getInt8(i + 1), len:dd.getUint16(i + 2, true), off:dd.getUint32(i + 8, true)});
+        m.set(d.getInt16(6, true), lista);
+      }
+      return m;
+    }
+    function valor(b, d, f) {
+      const o = f.off;
+      if (o + 1 > b.length) return null;
+      let v;
+      switch (f.dt) {
+        case 1: return dec.decode(b.subarray(o, o + f.len));
+        case 2: { const e = b.indexOf(0, o); return dec.decode(b.subarray(o, e < 0 || e > o + f.len ? o + f.len : e)); }
+        case 3: return dec.decode(b.subarray(o + 2, o + 2 + d.getUint16(o, true)));
+        case 7: v = d.getInt8(o); break;
+        case 8: v = d.getInt16(o, true); break;
+        case 9: v = d.getInt32(o, true); break;
+        case 11: return d.getFloat32(o, true);
+        case 12: return d.getFloat64(o, true);
+        case 19: v = Number(d.getBigInt64(o, true)); break;
+        default: return null;   // fechas, blobs: no hacen falta acá
+      }
+      return f.sc < 0 ? v / Math.pow(10, -f.sc) : v;
+    }
+    // estado de las transacciones (para avisar si se copió con StockFacil abierto)
+    let tips = null;
+    function confirmada(tx) {
+      if (tx < oit) return true;
+      if (!tips) {
+        const m = new Map();
+        for (const r of registros(0)) {
+          const d = new DataView(r.datos.buffer);
+          if (d.getInt16(8, true) === 0 && d.getInt16(16, true) === 3) m.set(d.getInt32(12, true), d.getInt32(4, true));
+        }
+        tips = m;
+      }
+      const tpp = (ps - 20) * 4, pg = tips.get(Math.floor(tx / tpp));
+      if (pg == null) return true;
+      const i = tx % tpp;
+      return ((u8[pagina(pg) + 20 + (i >> 2)] >> ((i & 3) * 2)) & 3) === 3;
+    }
+    let pendientes = 0;
+    function tabla(nombre) {
+      const rel = idDe(nombre), nombres = campos(nombre), fmts = formatos(rel), out = [];
+      for (const r of registros(rel)) {
+        const fmt = fmts.get(r.formato);
+        if (!fmt) throw new Error('No reconozco el formato de ' + nombre + ' (versión ' + r.formato + ').');
+        if (!confirmada(r.tx)) pendientes++;
+        const d = new DataView(r.datos.buffer), fila = {};
+        for (let i = 0; i < fmt.length; i++) {
+          const nom = nombres[i]; if (!nom) continue;
+          fila[nom] = (r.datos[i >> 3] & (1 << (i & 7))) ? null : valor(r.datos, d, fmt[i]);
+        }
+        out.push(fila);
+      }
+      return out;
+    }
+    return {tabla, get pendientes() { return pendientes; }, paginas: npag, tamPagina: ps};
+  }
+  return {abrir};
+})();
+
+/* Arma la lista de la app (mismas columnas que el Excel) a partir de la base de StockFacil */
+function filasDesdeGDB(buf) {
+  const db = LectorGDB.abrir(buf);
+  const txt = x => String(x == null ? '' : x).replace(/\s+/g, ' ').trim();
+  const rel = new Map(db.tabla('RELLENO').map(r => [r.IDRELLENO, txt(r.CONCEPTO)]));
+  const emp = new Map(db.tabla('EMPRESA').map(r => [r.IDEMPRESA, txt(r.RAZON)]));
+  const out = [];
+  for (const a of db.tabla('ARTICULO')) {
+    const co = String(a.CODIGO || '').replace(/\s+/g, '').toUpperCase();
+    if (!co || co === '0000') continue;   // 0000 = artículos rápidos de las ventas
+    out.push([co, txt(a.DETALLE), rel.get(a.FAMILIA) || '', emp.get(a.PROVEEDOR) || '', rel.get(a.SUBFAMILIA) || '', txt(a.MARCA),
+      txt(a.TALLE), txt(a.COLOR), Math.round(a.PRECIO2 || 0), Math.round(a.PRECIO3 || 0), Math.round(a.STOCK || 0)]);
+  }
+  if (!out.length) throw new Error('La base no tiene artículos.');
+  return {rows:out, pendientes:db.pendientes};
+}
+
 $('#stock-input').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
   busy('Leyendo ' + f.name + '…');
+  if (/\.(gdb|fdb)$/i.test(f.name)) {
+    try {
+      let buf;
+      try { buf = await f.arrayBuffer(); }
+      catch (err) { throw new Error('No pude abrir ' + f.name + '. ¿StockFacil está abierto? Cerralo y probá de nuevo.'); }
+      const r = filasDesdeGDB(buf);
+      noBusy();
+      aplicarCatalogo(r.rows, {ts:Date.now(), fuente:'StockFacil (' + f.name + ')'});
+      toast('Lista actualizada desde StockFacil: ' + GROUPS.filter(g => !g.oculto).length + ' artículos', 'ok');
+      if (r.pendientes) setTimeout(() => toast('Ojo: parece que StockFacil estaba abierto. Si algo no te cierra, cerralo y cargá el archivo de nuevo.', 'warn'), 2500);
+    } catch (err) {
+      noBusy();
+      toast(err && err.message ? err.message : 'No pude leer la base de StockFacil.', 'warn');
+    }
+    return;
+  }
   try {
     let tabla;
     if (/\.(csv|txt)$/i.test(f.name)) tabla = parseCSV(await f.text());
@@ -2193,9 +2496,17 @@ $('#stock-input').addEventListener('change', async e => {
       tabla = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:''});
     }
     const rows = filasDesdeTabla(tabla);
-    aplicarCatalogo(rows, {ts:Date.now(), fuente:f.name});
     noBusy();
-    toast('Stock actualizado: ' + GROUPS.filter(g => !g.oculto).length + ' artículos', 'ok');
+    const modo = CAT_ROWS.length ? await elegirCarga(rows, f.name) : 'total';
+    if (!modo) return;
+    if (modo === 'total') {
+      aplicarCatalogo(rows, {ts:Date.now(), fuente:f.name});
+      toast('Lista reemplazada: ' + GROUPS.filter(g => !g.oculto).length + ' artículos', 'ok');
+    } else {
+      const r = fusionarFilas(CAT_ROWS, rows);
+      aplicarCatalogo(r.rows, {ts:Date.now(), fuente:f.name + ' (solo esos artículos)'});
+      toast('Listo: ' + r.act + (r.act === 1 ? ' artículo actualizado' : ' artículos actualizados') + (r.agr ? ' y ' + r.agr + (r.agr === 1 ? ' nuevo' : ' nuevos') : '') + '. El resto quedó igual.', 'ok');
+    }
   } catch (err) {
     noBusy();
     toast(err && err.message && err.message.length > 12 ? err.message : 'No pude leer ese archivo. Probá exportarlo como .xlsx o .csv.', 'warn');
@@ -2216,7 +2527,7 @@ const FIREBASE_CONFIG = {
 const FB_VER = '12.19.0';
 const FB_URL = n => 'https://www.gstatic.com/firebasejs/' + FB_VER + '/firebase-' + n + '-compat.js';
 const MARGEN = 10 * 60 * 1000;
-const Nube = {db:null, auth:null, user:null, conectado:false, vaciando:false, subs:[], iniciando:false, estado:'local'};
+const Nube = {db:null, auth:null, user:null, conectado:false, vaciando:false, subs:[], iniciando:false, estado:'local', tiendaOk:false, primeras:new Set()};
 const PEND = Object.assign({ventas:[], devoluciones:[], fotos:[], fotosMig:[], fotosDel:[], catalogo:false, clientes:false}, LS.get('pend', {}));
 const guardarPend = () => LS.set('pend', PEND);
 const SYNC = Object.assign({ventas:0, devoluciones:0, fotos:0}, LS.get('sync_marcas', {}));
@@ -2262,7 +2573,22 @@ function renderCuenta() {
     : 'Sin cuenta, todo queda solo en este equipo. Entrá con Google para compartir con los celulares del negocio.';
   $('#cu-salir').hidden = !u;
   $('#cu-accion').textContent = u ? 'Sincronizar ahora' : 'Entrar con Google';
+  $('#cu-tienda').hidden = !(u && Nube.conectado);
 }
+$('#cu-t-ver').addEventListener('click', () => { window.open(urlTienda(), '_blank', 'noopener'); });
+$('#cu-t-comp').addEventListener('click', async () => {
+  const url = urlTienda();
+  const datos = {title:'Amor Koala', text:'Mirá la ropa de Amor Koala con precios y talles, y armá tu pedido:', url};
+  try { if (navigator.share) { await navigator.share(datos); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); toast('Link copiado. Pegalo en WhatsApp o donde quieras.', 'ok'); }
+  catch (e) { toast(url, ''); }
+});
+$('#cu-t-pub').addEventListener('click', async () => {
+  const b = $('#cu-t-pub'); b.disabled = true; b.textContent = 'Publicando…';
+  const ok = await revisarTienda(true);
+  b.disabled = false; b.textContent = 'Volver a publicar la tienda';
+  toast(ok ? 'Tienda publicada con la lista y las fotos de este celular.' : 'No se pudo publicar. Revisá internet y probá de nuevo.', ok ? 'ok' : 'warn');
+});
 $('#sync').addEventListener('click', () => { renderCuenta(); abrirVentana('m-cuenta'); });
 $('#cu-accion').addEventListener('click', () => {
   if (Nube.user) { escuchar(); vaciarPendientes(); toast('Sincronizando…', ''); return; }
@@ -2369,6 +2695,7 @@ async function conectar(u) {
   try { await Nube.db.doc('meta/clientes').get(); }
   catch (e) { if (e && e.code === 'permission-denied') { sinPermiso(); return; } }
   Nube.conectado = true;
+  Nube.tiendaOk = false; Nube.primeras = new Set();
   if (LS.get('migrado', '') !== u.uid) {
     for (const v of S.ventas) if (!PEND.ventas.includes(v.id)) PEND.ventas.push(v.id);
     for (const d of S.devs) if (!PEND.devoluciones.includes(d.id)) PEND.devoluciones.push(d.id);
@@ -2395,7 +2722,15 @@ function escuchar() {
   }
   Nube.subs.push(db.collection('fotos').where('ts', '>', Math.max(0, (SYNC.fotos || 0) - MARGEN)).orderBy('ts').onSnapshot(recibirFotos, errorNube));
 }
+function listoParaTienda(k) {
+  Nube.primeras.add(k);
+  if (!Nube.tiendaOk && Nube.primeras.has('cat') && Nube.primeras.has('fotos')) { Nube.tiendaOk = true; revisarTienda(false); }
+}
 function recibirCatalogo(snap) {
+  recibirCatalogo0(snap);
+  listoParaTienda('cat');
+}
+function recibirCatalogo0(snap) {
   const tsLocal = CAT_META ? CAT_META.ts : 0;
   if (!snap.exists) { if (CAT_META) { PEND.catalogo = true; guardarPend(); vaciarPendientes(); } return; }
   const d = snap.data() || {};
@@ -2448,6 +2783,7 @@ async function recibirFotos(snap) {
   }
   if (max > (SYNC.fotos || 0)) { SYNC.fotos = max; LS.set('sync_marcas', SYNC); }
   if (cambio) { guardarFotoTs(); guardarPend(); guardarSel(); refrescarFotos(); }
+  listoParaTienda('fotos');
 }
 async function fotoCompleta(co) {
   let b = null;
@@ -2462,6 +2798,7 @@ async function fotoCompleta(co) {
 }
 
 /* Lo que se sube */
+const PUB_VER = 2;
 function catalogoPublico() {
   const items = [];
   for (const g of GROUPS) {
@@ -2471,10 +2808,41 @@ function catalogoPublico() {
     const pv = con.map(v => v.pv), pt = con.map(v => v.pt);
     items.push({co:g.co, de:g.de, mr:g.mr || '', para:g.para, tipo:g.tipo,
       ef:[Math.min(...pv), Math.max(...pv)], tj:[Math.min(...pt), Math.max(...pt)],
-      talles:[...new Set(con.map(v => v.ta))], colores:[...new Set(con.map(v => v.cl).filter(Boolean))]});
+      talles:[...new Set(con.map(v => v.ta))], colores:[...new Set(con.map(v => v.cl).filter(Boolean))],
+      v:con.map(v => [v.ta, v.cl, v.pv, v.pt])});
   }
-  return {json:JSON.stringify(items), ts:CAT_META ? CAT_META.ts : Date.now(), n:items.length};
+  return {json:JSON.stringify(items), ts:CAT_META ? CAT_META.ts : Date.now(), n:items.length, ver:PUB_VER};
 }
+/* Índice público de fotos (código → fecha) para que la tienda baje solo las que se ven */
+function indiceFoto(co, ts) {
+  const FV = firebase.firestore.FieldValue;
+  return Nube.db.doc('publico/indice-fotos').set({m:{[idFoto(co)]: ts == null ? FV.delete() : ts}, upd:Date.now()}, {merge:true});
+}
+async function revisarTienda(forzar) {
+  if (!Nube.conectado) return false;
+  const db = Nube.db;
+  try {
+    await FOTOS_LISTAS;
+    if (CAT_META) {
+      const s = forzar ? null : await db.doc('publico/catalogo').get();
+      const d = s && s.exists ? (s.data() || {}) : null;
+      if (forzar || !d || (d.ver || 1) < PUB_VER || (d.ts || 0) < CAT_META.ts) await db.doc('publico/catalogo').set(catalogoPublico());
+    }
+    const si = forzar ? null : await db.doc('publico/indice-fotos').get();
+    if (forzar || !si.exists) {
+      const pend = new Set(PEND.fotos.concat(PEND.fotosMig));
+      const m = {};
+      for (const co of THUMBS.keys()) if (!pend.has(co)) m[idFoto(co)] = FOTO_TS[co] || 1;
+      const doc = {m, ver:1, upd:Date.now()};
+      await (forzar ? db.doc('publico/indice-fotos').set(doc) : db.doc('publico/indice-fotos').set(doc, {merge:true}));
+    }
+    return true;
+  } catch (e) {
+    if (e && e.code === 'permission-denied') sinPermiso();
+    return false;
+  }
+}
+const urlTienda = () => new URL('tienda.html', location.href).href.split('#')[0];
 function nubeGuardar(col, obj) {
   if (obj && obj.id && !PEND[col].includes(obj.id)) { PEND[col].push(obj.id); guardarPend(); }
   vaciarPendientes();
@@ -2503,7 +2871,7 @@ async function subirFoto(co, soloSiNoExiste) {
   const db = Nube.db;
   if (soloSiNoExiste) {
     const s = await db.collection('fotos').doc(idFoto(co)).get();
-    if (s.exists && !(s.data() || {}).borrado) return;
+    if (s.exists && !(s.data() || {}).borrado) { await indiceFoto(co, (s.data() || {}).ts || 1); return; }
     FOTO_TS[co] = FOTO_TS[co] || Date.now(); guardarFotoTs();
   }
   const [full, thumb] = await Promise.all([FotoDB.full(co), FotoDB.thumb(co)]);
@@ -2511,6 +2879,7 @@ async function subirFoto(co, soloSiNoExiste) {
   const ts = FOTO_TS[co] || Date.now();
   await db.collection('publico').doc('f-' + idFoto(co)).set({full:await aDataURL(full), ts});
   await db.collection('fotos').doc(idFoto(co)).set({thumb:await aDataURL(thumb), ts});
+  await indiceFoto(co, ts);
 }
 async function vaciar() {
   if (!Nube.conectado || Nube.vaciando) return;
@@ -2550,6 +2919,7 @@ async function vaciar() {
       const ts = FOTO_TS[co] || Date.now();
       await db.collection('publico').doc('f-' + idFoto(co)).delete();
       await db.collection('fotos').doc(idFoto(co)).set({borrado:true, ts});
+      await indiceFoto(co, null);
       quitarPend('fotosDel', co);
     }
     for (const co of PEND.fotos.slice()) {
@@ -3090,7 +3460,7 @@ renderLista();
 actualizarBadge();
 renderCarrito();
 irA('ventas');
-cargarFotosGuardadas();
+const FOTOS_LISTAS = cargarFotosGuardadas();
 iniciarNube();
 /* =========================================================
    Instalar como app y funcionar sin internet
@@ -3116,7 +3486,8 @@ try {
   }
 } catch (e) {}
 
-window.__ak = {Nube, PEND, FOTO_TS, S, totales, precioCuotas, procesarCodigo, BYCODE, THUMBS, CAT, SH, FotoDB, FIL, buscar, parseQ};
+window.__ak = {Nube, PEND, FOTO_TS, S, totales, precioCuotas, procesarCodigo, get BYCODE() { return BYCODE; }, THUMBS, CAT, SH, FotoDB, FIL, buscar, parseQ,
+  get GROUPS() { return GROUPS; }, get CAT_ROWS() { return CAT_ROWS; }, get CAT_META() { return CAT_META; }, get OPC() { return OPC; }};
 })();
 </script>
 </body></html>
