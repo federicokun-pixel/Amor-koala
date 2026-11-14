@@ -111,6 +111,12 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
 .rows{display:flex;flex-direction:column}
 .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
 .row:last-child{border-bottom:0}
+details.revisar{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:14px}
+details.revisar summary{cursor:pointer;font-weight:700;color:var(--warn)}
+details.revisar h4{margin:12px 0 4px;font-size:13px;color:var(--fg-2)}
+details.revisar ul{margin:0;padding-left:18px;color:var(--fg-2)}
+details.revisar li{margin:2px 0}
+details.revisar .btn{margin-top:10px}
 .row span:first-child{color:var(--fg-2)}
 .row.strong span{color:var(--fg);font-weight:700}
 .empty{padding:28px 12px;text-align:center;color:var(--fg-3);display:flex;flex-direction:column;align-items:center;gap:8px}
@@ -702,7 +708,7 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
   <form class="sheet" role="dialog" aria-modal="true" aria-labelledby="ma-title" id="ma-form">
     <header class="sheet-head"><div><h2 id="ma-title">Artículo rápido</h2></div><button class="icon-btn" type="button" data-close aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></header>
     <div class="sheet-body">
-      <p class="more" style="text-align:left">Para algo que no está en el Excel. Se agrega al carrito con el precio que pongas.</p>
+      <p class="more" style="text-align:left">Para algo que no está en la lista. Se agrega al carrito con el precio que pongas.</p>
       <label class="field"><span>Descripción</span><input class="inp" id="ma-de" required placeholder="Ej: medias surtidas"></label>
       <div class="inline2">
         <label class="field"><span>Precio efectivo</span><input class="inp num" id="ma-pv" type="number" inputmode="decimal" min="0" step="any" required></label>
@@ -741,6 +747,12 @@ select.inp{appearance:none;background-image:linear-gradient(45deg,transparent 50
     <header class="sheet-head"><div><h2 id="ms-title">Actualizar stock y precios</h2></div><button class="icon-btn" type="button" data-close aria-label="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></header>
     <div class="sheet-body">
       <div class="rows" id="ms-info"></div>
+      <details class="revisar" id="ms-rev" hidden>
+        <summary id="ms-rev-sum">Para revisar en StockFacil</summary>
+        <div id="ms-rev-body"></div>
+        <button class="btn ghost" type="button" id="ms-rev-copy"><svg class="i"><use href="#i-copy"/></svg>Copiar la lista</button>
+        <textarea id="ms-rev-text" readonly rows="6" hidden style="width:100%;margin-top:8px"></textarea>
+      </details>
       <p class="more" style="text-align:left"><b>Lo más fácil:</b> en la PC cerrá StockFacil y elegí el archivo <b>DBINDU.GDB</b> (en C:\StockFacil Indumentaria). Trae todos los artículos de una, con precio, stock y temporada. El archivo no se sube a ningún lado: la app solo lee los artículos.</p>
       <p class="more" style="text-align:left">También sigue funcionando el Excel o CSV de siempre.</p>
       <button class="btn primary" type="button" id="ms-pick"><svg class="i"><use href="#i-box"/></svg>Elegir DBINDU.GDB o Excel</button>
@@ -912,13 +924,17 @@ let CAT_ROWS = (CAT_META && LS.get('catalogo', null)) || BASE.rows;
 if (CAT_ROWS === BASE.rows) CAT_META = null;
 let GROUPS = [], BYCODE = new Map(), VARS = new Map(), TALLES = new Set(), COLWORDS = new Set(), OPC = {para:[], temp:[], tipo:[], talle:[], color:[], marca:[]};
 
+const LETRAS_TALLE = {XXS:0, XS:1, S:2, M:3, L:4, XL:5, XXL:6, XXXL:7};
 function talleOrden(t) {
-  const u = String(t).toUpperCase();
-  if (u === 'RN') return -1;
+  const u = String(t).toUpperCase().trim();
+  if (u === 'RN' || u === 'NR') return -1;
   if (!u) return 999;
+  if (u in LETRAS_TALLE) return 400 + LETRAS_TALLE[u];
   const n = parseFloat(u);
   return isNaN(n) ? 500 + u.charCodeAt(0) : n;
 }
+/* Precio de tarjeta que seguro está mal cargado: en cero, menor que el contado o más del doble */
+const precioTjRaro = v => v.pv > 0 && (v.pt <= 0 || v.pt < v.pv || v.pt > v.pv * 2);
 
 function cargarCatalogo(rows) {
   const vmap = new Map();
@@ -947,7 +963,7 @@ function cargarCatalogo(rows) {
     g.pvMin = Math.min(...pvs); g.pvMax = Math.max(...pvs);
     g.ptMin = Math.min(...pts); g.ptMax = Math.max(...pts);
     g.oculto = g.pvMax === 0 && g.ptMax === 0;
-    g.alertaTj = g.variants.some(v => v.pt > 0 && v.pt < v.pv);
+    g.alertaTj = g.variants.some(precioTjRaro);
     g.cat = CATS[g.co.slice(0, 2)] || '';
     const talles = [...new Set(g.variants.map(v => v.ta))];
     const colores = [...new Set(g.variants.map(v => v.cl).filter(Boolean))];
@@ -1064,6 +1080,9 @@ function buscar(q, sinFiltros) {
     const score = !nq ? 3 : c === nq ? 0 : c.startsWith(nq) ? 1 : (P.txt[0] && g.nd.startsWith(P.txt[0])) ? 2 : 3;
     out.push([score, g]);
   }
+  /* Si escribiste un código completo, mostrarlo siempre (aunque no tenga stock o no entre en los filtros) */
+  const exacto = nq && BYCODE.get(nq.toUpperCase());
+  if (exacto && !exacto.oculto && !out.some(x => x[1] === exacto)) out.push([0, exacto]);
   out.sort((a, b) => a[0] - b[0] || a[1].nd.localeCompare(b[1].nd));
   return out.map(x => x[1]);
 }
@@ -1310,7 +1329,7 @@ function limpiarCodigo(raw) { return String(raw || '').trim().replace(/^\*+|\*+$
 function procesarCodigo(raw, origen) {
   const code = limpiarCodigo(raw);
   if (!code) return;
-  if (!hayLista()) { irA('ventas'); toast('Primero cargá tu lista de artículos (Excel).', 'warn'); return; }
+  if (!hayLista()) { irA('ventas'); toast('Primero cargá tu lista de artículos (DBINDU.GDB o Excel).', 'warn'); return; }
   cerrarTodas();
   if (S.tab !== 'ventas') irA('ventas');
   $('#q').value = code;
@@ -1548,7 +1567,10 @@ function abrirProducto(co, preKey) {
   $('#mp-tj').textContent = precioTxt(g.ptMin, g.ptMax);
   const w = $('#mp-warn');
   w.hidden = !g.alertaTj;
-  if (g.alertaTj) $('#mp-warn-txt').textContent = 'En el Excel el precio de tarjeta es menor que el de efectivo. Revisalo en VP Sistemas antes de cobrar con tarjeta.';
+  if (g.alertaTj) {
+    const v = g.variants.find(precioTjRaro);
+    $('#mp-warn-txt').textContent = 'El precio de tarjeta parece mal cargado en StockFacil (' + (v.ta ? 'talle ' + v.ta + ': ' : '') + 'contado ' + fmt(v.pv) + ', tarjeta ' + fmt(v.pt) + '). Revisalo antes de cobrar con tarjeta.';
+  }
   renderVariantes();
   renderFotoFicha();
   abrirVentana('m-prod');
@@ -1600,7 +1622,7 @@ $('#mp-add').addEventListener('click', () => {
 function agregarAlCarrito(v, qty) {
   const it = S.carrito.find(i => i.key === v.key);
   if (it) it.qty += qty;
-  else S.carrito.push({key:v.key, co:v.co, de:v.de, ta:v.ta, cl:v.cl, pv:v.pv, pt:v.pt, qty:qty, alerta:v.pt > 0 && v.pt < v.pv});
+  else S.carrito.push({key:v.key, co:v.co, de:v.de, ta:v.ta, cl:v.cl, pv:v.pv, pt:v.pt, qty:qty, alerta:precioTjRaro(v)});
   guardarCarrito();
 }
 function actualizarBadge() {
@@ -1685,7 +1707,7 @@ function renderPago() {
     sub = t.cuotas > 1 ? t.cuotas + ' cuotas de ' + fmt(t.cuota) : 'Tarjeta en 1 pago';
     if (t.ef && t.ef < t.total) alt = 'En efectivo: ' + fmt(t.ef);
     $('#pay-rows').innerHTML =
-      '<div class="row"><span>Precio tarjeta (Excel)</span><span class="num">' + fmt(t.tj) + '</span></div>' +
+      '<div class="row"><span>Precio tarjeta (lista)</span><span class="num">' + fmt(t.tj) + '</span></div>' +
       (t.cuotas > 1 ? '<div class="row"><span>Recargo ' + t.cuotas + ' cuotas</span><span class="num">+ ' + fmt(t.recargo) + '</span></div>' : '') +
       '<div class="row strong"><span>Total</span><span class="num">' + fmt(t.total) + '</span></div>';
   } else {
@@ -2142,7 +2164,47 @@ function renderStockInfo() {
     '<div class="row"><span>Artículos</span><span class="num">' + arts + '</span></div>' +
     '<div class="row"><span>Filas (talle y color)</span><span class="num">' + filas + '</span></div>';
   $('#ms-reset').hidden = !CAT_META || !BASE.rows.length;
+  renderRevisar();
 }
+/* Cosas raras de la lista que conviene corregir en StockFacil */
+function listaRevisar() {
+  const precios = new Map(), negativos = [], repetidos = new Map(), vistos = new Map();
+  for (const r of CAT_ROWS) {
+    const co = String(r[0] || '').trim().toUpperCase(); if (!co) continue;
+    const v = {co, de:String(r[1] || '').trim(), ta:String(r[6] == null ? '' : r[6]).trim(), cl:String(r[7] == null ? '' : r[7]).trim(), pv:Number(r[8]) || 0, pt:Number(r[9]) || 0, st:Number(r[10]) || 0};
+    if (precioTjRaro(v)) {
+      const k = co + '|' + v.pv + '|' + v.pt;
+      if (!precios.has(k)) precios.set(k, {co, de:v.de, pv:v.pv, pt:v.pt, talles:[]});
+      if (v.ta && !precios.get(k).talles.includes(v.ta)) precios.get(k).talles.push(v.ta);
+    }
+    if (v.st < 0) negativos.push(v);
+    const kv = co + '|' + v.ta + '|' + v.cl, prev = vistos.get(kv);
+    if (prev && (prev.pv !== v.pv || prev.pt !== v.pt)) repetidos.set(kv, [prev, v]);
+    else if (!prev) vistos.set(kv, v);
+  }
+  return {precios:[...precios.values()], negativos, repetidos:[...repetidos.values()]};
+}
+function textoRevisar(L) {
+  const tl = v => (v.ta ? ' T' + v.ta : '') + (v.cl ? ' ' + v.cl : '');
+  const out = [];
+  if (L.precios.length) { out.push('PRECIO DE TARJETA PARA REVISAR'); for (const p of L.precios) out.push(p.co + ' ' + p.de + (p.talles.length ? ' (T' + p.talles.join(', ') + ')' : '') + ': contado ' + fmt(p.pv) + ', tarjeta ' + fmt(p.pt)); }
+  if (L.repetidos.length) { out.push('', 'MISMO CÓDIGO, TALLE Y COLOR CON DISTINTO PRECIO'); for (const [a, b] of L.repetidos) out.push(a.co + tl(a) + ': "' + a.de + '" ' + fmt(a.pv) + ' y "' + b.de + '" ' + fmt(b.pv)); }
+  if (L.negativos.length) { out.push('', 'STOCK NEGATIVO (contar)'); for (const v of L.negativos) out.push(v.co + tl(v) + ': ' + v.st); }
+  return out.join('\n');
+}
+function renderRevisar() {
+  const L = listaRevisar(), n = L.precios.length + L.negativos.length + L.repetidos.length;
+  $('#ms-rev').hidden = !n;
+  if (!n) return;
+  $('#ms-rev-sum').textContent = 'Para revisar en StockFacil (' + n + ')';
+  const tl = v => (v.ta ? ' T' + v.ta : '') + (v.cl ? ' ' + v.cl : '');
+  const li = x => '<li>' + esc(x) + '</li>';
+  $('#ms-rev-body').innerHTML =
+    (L.precios.length ? '<h4>Precio de tarjeta raro (' + L.precios.length + ')</h4><ul>' + L.precios.map(p => li(p.co + ' ' + p.de + ': contado ' + fmt(p.pv) + ', tarjeta ' + fmt(p.pt))).join('') + '</ul>' : '') +
+    (L.repetidos.length ? '<h4>Mismo código, talle y color con distinto precio (' + L.repetidos.length + ')</h4><ul>' + L.repetidos.map(([a, b]) => li(a.co + tl(a) + ': ' + a.de + ' ' + fmt(a.pv) + ' / ' + b.de + ' ' + fmt(b.pv))).join('') + '</ul>' : '') +
+    (L.negativos.length ? '<h4>Stock negativo, conviene contarlos (' + L.negativos.length + ')</h4><ul>' + L.negativos.map(v => li(v.co + tl(v) + ': ' + v.st)).join('') + '</ul>' : '');
+}
+$('#ms-rev-copy').addEventListener('click', () => copiarTexto(textoRevisar(listaRevisar()), $('#ms-rev-text')));
 $('#stock-btn').addEventListener('click', () => { renderStockInfo(); abrirVentana('m-stock'); });
 $('#ms-pick').addEventListener('click', () => { const i = $('#stock-input'); i.value = ''; i.click(); });
 $('#ms-reset').addEventListener('click', async () => {
