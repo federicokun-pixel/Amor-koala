@@ -2323,7 +2323,9 @@ function aplicarCatalogo(rows, meta) {
    ========================================================= */
 const LectorGDB = (() => {
   const dec = new TextDecoder('windows-1252');
-  const SALTEAR = 1 | 2 | 4 | 16 | 32;   // borrado, versión vieja, fragmento, blob
+  // borrado (1), versión vieja (2), fragmento (4), blob (16). El 32 NO se saltea: en un registro vigente quiere decir
+  // "la versión anterior está guardada como diferencias" (pasa cuando StockFacil modificó el artículo y la base no se limpió todavía)
+  const SALTEAR = 1 | 2 | 4 | 16;
 
   function abrir(buf) {
     const u8 = new Uint8Array(buf), dv = new DataView(buf);
