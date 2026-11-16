@@ -934,7 +934,8 @@ function talleOrden(t) {
   return isNaN(n) ? 500 + u.charCodeAt(0) : n;
 }
 /* Precio de tarjeta que seguro está mal cargado: en cero, menor que el contado o más del doble */
-const precioTjRaro = v => v.pv > 0 && (v.pt <= 0 || v.pt < v.pv || v.pt > v.pv * 2);
+// más del triple = casi seguro un cero de más (las promos "solo efectivo" llegan a ~2x, ej. NV876 9.000 / 19.000)
+const precioTjRaro = v => v.pv > 0 && (v.pt <= 0 || v.pt < v.pv || v.pt > v.pv * 3);
 
 function cargarCatalogo(rows) {
   const vmap = new Map();
